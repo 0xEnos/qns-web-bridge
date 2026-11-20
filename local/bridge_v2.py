@@ -24,7 +24,7 @@ HTTPS_PORT = 17778
 API_PORT = 17779
 REGISTRY_URL = os.environ.get(
     "QNS_BRIDGE_REGISTRY_URL",
-    "https://0xenos1.qstorage.quilibrium.com/qns-web-bridge/registry.json",
+    "https://raw.githubusercontent.com/0xEnos/qns-web-bridge/main/registry/manifest.json",
 )
 REGISTRY_REFRESH_SECONDS = 3600
 MAX_REGISTRY_BYTES = 2 * 1024 * 1024
@@ -186,9 +186,19 @@ class Resolver:
                 for entry in entries:
                     name = entry.get("name", "") if isinstance(entry, dict) else ""
                     try:
-                        verified[name] = verify_record(name, entry)
+                        if entry.get("version") == 3:
+                            verified[name] = verify_record(name, entry)
+                        elif entry.get("curated") is True:
+                            if not NAME_RE.fullmatch(name) or entry.get("name") != name:
+                                raise ValueError("Invalid curated .q name")
+                            verified[name] = {
+                                "version": 1, "name": name,
+                                "destination": destination(entry.get("destination")),
+                            }
+                        else:
+                            raise ValueError("Entry is neither signed nor curator-approved")
                     except (ValueError, TypeError):
-                        LOG.warning("Ignoring invalid QStorage registry entry: %s", name)
+                        LOG.warning("Ignoring invalid public manifest entry: %s", name)
                 for name, entry in self.registry.items():
                     if (LOCAL_RECORDS_DIR / (name[:-2] + ".json")).exists():
                         verified[name] = entry

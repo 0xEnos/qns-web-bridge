@@ -9,24 +9,22 @@ server IP or a QStorage bucket.
 
 - A personal mapping saved in the extension is resolved locally and takes
   precedence over the shared directory.
-- Shared associations come from one static JSON manifest in the QStorage
-  bucket configured by `QNS_BRIDGE_REGISTRY_URL` (default:
-  `https://0xenos1.qstorage.quilibrium.com/qns-web-bridge/registry.json`).
+- Shared associations come from one public JSON manifest. The default is the
+  public GitHub raw file in this repository; a user can point
+  `QNS_BRIDGE_REGISTRY_URL` to a copy in their own QStorage bucket.
 - The bridge downloads the same whole manifest on the first shared lookup and
   refreshes it at most once per hour. It does not request a name-specific
-  record, and normal `.q` visits do not call `names.quilibrium.com` or another
-  QNS resolver.
-- The manifest and each entry are public. The bucket can observe requests for
-  the manifest, but not which entry a user opens. Users who need to avoid even
-  that bucket request can use personal local mappings only.
-- A wallet signature proves which wallet signed an association. It does not,
-  by itself, prove that the wallet currently owns the QNS name. The maintainer
-  of a shared manifest must verify the QNS owner before accepting an entry.
+  record, and normal `.q` visits do not call a QNS resolver. The host can see
+  the manifest download time and client IP, but not which entry the user opens.
+- Local mappings take precedence and make no directory request. Manifest
+  entries marked `curated` are trusted as statements by this repository's
+  maintainer; wallet-signed entries are also supported and verified. A wallet
+  signature proves who signed, not that the wallet owns the QNS name.
 
 The official QNS SDK currently uses an HTTP resolver endpoint rather than
 exposing a direct protocol-proof resolver to this bridge. This project therefore
-does not claim that its manifest is a direct Q protocol lookup; it removes
-per-visit name queries and the third-party per-name registry.
+does not claim that its manifest is a direct Q protocol lookup; it shares a
+curated directory without per-visit name queries.
 
 ## Install on Linux
 
@@ -44,29 +42,26 @@ The CA and its private key stay under `~/.local/share/qns-bridge/`. Do not copy
 or publish that directory. The bridge listens on loopback only: SOCKS5 port
 17777, HTTPS port 17778, and local API port 17779.
 
-## Publish an association
+## Share a site with all extension users
 
-1. In the extension, enter the `.q` name and either a public server IP or a
-   QStorage bucket name.
-2. Sign the proposed association in the wallet. This is a local message
-   signature; it does not submit a transaction or contact a registry.
-3. The bridge stores the signed entry locally and downloads a JSON file.
-   Resolve the ownership question before sharing it: confirm that the signing
-   wallet is the current QNS owner.
-4. Collect verified entry files and build a manifest:
+The repository's public `registry/manifest.json` is the shared directory. Add
+an entry for a site you own or are authorized to publish, then commit and push
+the change. Every bridge downloads the same complete file; lookups are local.
+For example:
 
-   ```sh
-   python3 registry/build_manifest.py registry/entries
-   ```
+```json
+{
+  "name": "example.q",
+  "curated": true,
+  "destination": {"kind": "qstorage", "bucket": "mybucket"}
+}
+```
 
-   The command verifies every signature and writes `registry/manifest.json`.
-   Upload that file to the public QStorage bucket as
-   `qns-web-bridge/registry.json`.
+The manifest is publicly readable. To use a copy in your own QStorage bucket,
+set `QNS_BRIDGE_REGISTRY_URL` to its public object URL. The repository also
+supports signed records, but their signatures identify the signer rather than
+prove QNS ownership.
 
-The extension does not contain QStorage write credentials. Uploading the
-manifest is a deliberate bucket-owner action. To use another bucket, set
-`QNS_BRIDGE_REGISTRY_URL` in the bridge service environment to that bucket's
-public manifest URL and restart the local service.
 
 ## Deployment files
 
@@ -80,8 +75,8 @@ published in the Chrome Web Store.
 
 ## Limitations
 
-- The shared manifest is curated. A valid wallet signature alone is not proof
-  that the signer owns the corresponding QNS name.
+- Curated manifest entries rely on users trusting the repository maintainer.
+  Only add names you own or have permission to publish.
 - QNS's **Set Resolved Address** field is for a Quilibrium address, not a web
   URL. Web destinations use the signed Web Bridge association.
 - Each user needs the local bridge and its local `.q` certificate authority;

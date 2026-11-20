@@ -50,16 +50,22 @@ def main():
     for entry in args.entries:
         paths.extend(sorted(entry.glob("*.json")) if entry.is_dir() else [entry])
     records = {}
+    if args.output.exists():
+        previous = json.loads(args.output.read_text(encoding="utf-8"))
+        for record in previous.get("sites", []):
+            if isinstance(record, dict) and record.get("curated") is True:
+                records[record["name"]] = record
     for path in paths:
         record = validate_record(path)
         name = record["name"]
         if name in records and records[name] != record:
-            raise ValueError(f"Conflicting signed entries for {name}")
+            raise ValueError(f"Conflicting entries for {name}; resolve the conflict explicitly")
         records[name] = record
 
     manifest = {
         "version": 1,
         "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "curator": "0xEnos",
         "sites": [records[name] for name in sorted(records)],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
