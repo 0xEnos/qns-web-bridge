@@ -7,7 +7,7 @@ if command -v brave >/dev/null 2>&1; then
 elif command -v brave-browser >/dev/null 2>&1; then
   browser=brave-browser
 else
-  printf 'Brave est introuvable. Installe Brave ou charge extension/ dans ton Brave actuel.\n' >&2
+  printf 'Brave was not found. Install Brave or load extension/ in your existing Brave browser.\n' >&2
   exit 1
 fi
 

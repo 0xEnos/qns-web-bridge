@@ -5,7 +5,7 @@ const NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.q$/;
 
 function normalizeName(value) {
   const name = value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-  if (!NAME.test(name)) throw new Error('Saisissez un nom comme monsite.q');
+  if (!NAME.test(name)) throw new Error('Enter a name like mysite.q');
   return name;
 }
 

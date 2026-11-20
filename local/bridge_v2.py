@@ -54,20 +54,20 @@ def destination(value):
             raise ValueError("Use a public server IP or QStorage bucket name")
         return {"kind": "https", "host": host}
     if not isinstance(value, dict):
-        raise ValueError("Destination invalide")
+        raise ValueError("Invalid destination")
     kind = value.get("kind")
     if kind == "ip":
         try:
             address = ipaddress.ip_address(value.get("ip", ""))
         except ValueError as exc:
-            raise ValueError("Saisissez une adresse IP valide") from exc
+            raise ValueError("Enter a valid IP address") from exc
         if not address.is_global:
-            raise ValueError("Une IP publique est requise")
+            raise ValueError("A public IP address is required")
         vhost = str(value.get("host", "")).strip().lower().rstrip(".")
         if vhost:
             if (len(vhost) > 253 or "." not in vhost or vhost.endswith(".q")
                     or not re.fullmatch(r"[a-z0-9.-]+", vhost)):
-                raise ValueError("Nom d’hôte virtuel invalide")
+                raise ValueError("Invalid virtual hostname")
         return {"kind": "ip", "ip": address.compressed, "host": vhost}
     if kind == "qstorage":
         bucket = str(value.get("bucket", "")).strip().lower()
@@ -76,9 +76,9 @@ def destination(value):
         if (not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])?", bucket)
                 or len(bucket) < 3 or ".." in bucket or bucket.startswith("xn--")
                 or re.fullmatch(r"[0-9.]+", bucket)):
-            raise ValueError("Saisissez le nom du bucket QStorage")
+            raise ValueError("Enter a QStorage bucket name")
         return {"kind": "qstorage", "bucket": bucket}
-    raise ValueError("Choisissez une IP de serveur ou un bucket QStorage")
+    raise ValueError("Choose a server IP or QStorage bucket")
 
 
 def signed_message(name, target, timestamp, nonce):
@@ -245,9 +245,9 @@ async def publish_page(request, name):
         try:
             data = json.loads(body)
         except (ValueError, TypeError) as exc:
-            raise web.HTTPBadRequest(text="Publication invalide") from exc
+            raise web.HTTPBadRequest(text="Invalid publication") from exc
         if not isinstance(data, dict) or data.get("name") != name:
-            raise web.HTTPBadRequest(text="Le nom signé doit correspondre à l’adresse .q ouverte")
+            raise web.HTTPBadRequest(text="The signed name must match the open .q address")
         try:
             target = destination(data.get("destination"))
             timestamp, nonce, signature = (data.get(k) for k in ("timestamp", "nonce", "signature"))
@@ -255,7 +255,7 @@ async def publish_page(request, name):
                     or not isinstance(nonce, str) or not re.fullmatch(r"[0-9a-f]{32}", nonce)
                     or not isinstance(signature, str)
                     or not re.fullmatch(r"0x[0-9a-fA-F]{130}", signature)):
-                raise ValueError("Signature expirée ou invalide")
+                raise ValueError("Expired or invalid signature")
             signer = Account.recover_message(
                 encode_defunct(text=signed_message(
                     name, target, timestamp, nonce)), signature=signature,

@@ -32,19 +32,19 @@ document.getElementById('destination').addEventListener('input', () => {
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  status.textContent = 'Vérification de votre nom QNS…';
+  status.textContent = 'Checking your QNS name…';
   try {
     const name = document.getElementById('name').value.trim().toLowerCase();
-    if (!namePattern.test(name)) throw new Error('Indiquez un nom comme monsite.q.');
+    if (!namePattern.test(name)) throw new Error('Enter a name like mysite.q.');
     const destination = destinationFromFields();
-    if (!window.ethereum) throw new Error('Ouvrez cette page dans Brave avec votre portefeuille QNS.');
+    if (!window.ethereum) throw new Error('Open this page in Brave with your QNS wallet.');
     const [account] = await window.ethereum.request({method: 'eth_requestAccounts'});
-    if (!account) throw new Error('Aucun portefeuille connecté.');
+    if (!account) throw new Error('No wallet is connected.');
     const timestamp = Math.floor(Date.now() / 1000);
     const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), x => x.toString(16).padStart(2, '0')).join('');
     const encoded = JSON.stringify(Object.fromEntries(Object.entries(destination).sort(([a], [b]) => a.localeCompare(b))));
     const message = `QNS Web Bridge v3\nName: ${name}\nDestination: ${encoded}\nTimestamp: ${timestamp}\nNonce: ${nonce}`;
-    status.textContent = 'Confirmez la signature dans votre portefeuille…';
+    status.textContent = 'Confirm the signature in your wallet…';
     const signature = await window.ethereum.request({method: 'personal_sign', params: [message, account]});
     const result = await fetch('/.qns-web-bridge/api/publish', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -59,7 +59,7 @@ form.addEventListener('submit', async event => {
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     const label = destination.kind === 'ip' ? destination.ip + (destination.host ? ' · ' + destination.host : '') : destination.bucket + '.qstorage.quilibrium.com';
-    status.textContent = `${name} → ${label} est enregistré sur cet appareil. Le fichier signé ${link.download} a été téléchargé. Pour le partager, ajoute-le au manifeste QStorage après avoir vérifié que le portefeuille signataire possède ce nom QNS.`;
+    status.textContent = `${name} → ${label} was saved on this device. The signed file ${link.download} was downloaded. To share it, add it to the QStorage manifest after verifying that the signing wallet owns this QNS name.`;
     if (location.hostname === name) {
       setTimeout(() => location.replace('https://' + name + '/'), 900);
     }

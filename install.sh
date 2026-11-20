@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 for program in python3 openssl certutil; do
   if ! command -v "$program" >/dev/null 2>&1; then
-    echo "Commande manquante : $program" >&2
+  echo "Missing command: $program" >&2
     exit 1
   fi
 done
@@ -16,4 +16,4 @@ sed "s|%h/hal/qns-bridge|$ROOT|g" "$ROOT/local/qns-bridge.service" > "$HOME/.con
 systemctl --user daemon-reload
 systemctl --user enable --now qns-bridge.service
 systemctl --user restart qns-bridge.service
-echo "Relais local actif. Chargez le dossier $ROOT/extension dans brave://extensions."
+echo "Local bridge is running. Load $ROOT/extension in brave://extensions."

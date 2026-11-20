@@ -12,7 +12,7 @@ cd qns-web-bridge
 ./install.sh
 ```
 
-Then open `brave://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` directory. In the popup, type the first letters of a shared `.q` name in the existing **Nom QNS** field and choose its suggestion, or enter a name directly.
+Then open `brave://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` directory. In the popup, type the first letters of a shared `.q` name in the existing **QNS name** field and choose its suggestion, or enter a name directly.
 
 The installer creates a local CA and bridge for that computer. It does not install the extension automatically. The CA and private key stay under `~/.local/share/qns-bridge/`; never share that directory.
 
