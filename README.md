@@ -1,86 +1,44 @@
 # QNS Web Bridge
 
-QNS Web Bridge lets Brave open a Quilibrium `.q` name over HTTPS while keeping
-that name in the address bar. It consists of a small Brave extension and a
-local HTTPS/SOCKS bridge. A signed record can associate a name with a public
-server IP or a QStorage bucket.
+Open Quilibrium `.q` websites in Brave using a local bridge and extension.
 
-## Privacy model
+## Install
 
-- A personal mapping saved in the extension is resolved locally and takes
-  precedence over the shared directory.
-- Shared associations come from one public JSON manifest. The default is the
-  public GitHub raw file in this repository; a user can point
-  `QNS_BRIDGE_REGISTRY_URL` to a copy in their own QStorage bucket.
-- The bridge downloads the same whole manifest on the first shared lookup and
-  refreshes it at most once per hour. It does not request a name-specific
-  record, and normal `.q` visits do not call a QNS resolver. The host can see
-  the manifest download time and client IP, but not which entry the user opens.
-- Local mappings take precedence and make no directory request. Manifest
-  entries marked `curated` are trusted as statements by this repository's
-  maintainer; wallet-signed entries are also supported and verified. A wallet
-  signature proves who signed, not that the wallet owns the QNS name.
+On Linux with Python 3, OpenSSL, `certutil`, Brave, and systemd user services:
 
-The official QNS SDK currently uses an HTTP resolver endpoint rather than
-exposing a direct protocol-proof resolver to this bridge. This project therefore
-does not claim that its manifest is a direct Q protocol lookup; it shares a
-curated directory without per-visit name queries.
-
-## Install on Linux
-
-Requirements: Python 3, OpenSSL, `certutil` (for example, `libnss3-tools` on
-Linux Mint), Brave, and systemd user services.
-
-1. Run `./install.sh`. It creates a Python environment, installs a local CA
-   certificate limited to `.q` names in the current user's NSS store, and
-   starts the local bridge.
-2. In `brave://extensions`, enable Developer mode and choose **Load unpacked**;
-   select this repository's `extension/` directory.
-3. Enter an owned name such as `example.q` in the extension.
-
-The CA and its private key stay under `~/.local/share/qns-bridge/`. Do not copy
-or publish that directory. The bridge listens on loopback only: SOCKS5 port
-17777, HTTPS port 17778, and local API port 17779.
-
-## Share a site with all extension users
-
-The repository's public `registry/manifest.json` is the shared directory. Add
-an entry for a site you own or are authorized to publish, then commit and push
-the change. Every bridge downloads the same complete file; lookups are local.
-For example:
-
-```json
-{
-  "name": "example.q",
-  "curated": true,
-  "destination": {"kind": "qstorage", "bucket": "mybucket"}
-}
+```sh
+git clone https://github.com/0xEnos/qns-web-bridge.git
+cd qns-web-bridge
+./install.sh
 ```
 
-The manifest is publicly readable. To use a copy in your own QStorage bucket,
-set `QNS_BRIDGE_REGISTRY_URL` to its public object URL. The repository also
-supports signed records, but their signatures identify the signer rather than
-prove QNS ownership.
+Then open `brave://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` directory. Open the extension popup and click a site in **Shared .q directory**, or enter a `.q` name.
 
+The installer creates a local CA and bridge for that computer. It does not install the extension automatically. The CA and private key stay under `~/.local/share/qns-bridge/`; never share that directory.
 
-## Deployment files
+## Shared directory
+
+The extension downloads one public JSON directory from this repository and shows the published sites in its popup. The bridge caches the whole file for up to one hour. It does not ask a per-name resolver when a person visits a listed `.q` site, and this project does not contact `proxima.auction`.
+
+The directory currently contains curated associations maintained in this repository. Everyone can browse those entries without a GitHub account. Saving an association with the extension currently saves it only on that computer; it does not publish it for other users. Do not put QStorage credentials or private keys in the extension. A static public bucket or manifest can distribute a directory, but cannot safely accept anonymous updates by itself.
+
+The registry host can observe when the full directory is downloaded and the downloader's IP address. It does not learn which entry is opened from that download.
+
+## Current shared entry
+
+`obscura.q` points to the public QStorage bucket `0xenos`. Add only names you own or are authorized to publish. Curated entries are statements by the repository maintainer, not cryptographic proof of QNS ownership.
+
+## Files
 
 - `extension/`: Brave extension.
-- `local/`: local HTTPS/SOCKS bridge, certificate setup, and user service.
-- `registry/`: signed-entry publisher page, manifest builder, and empty
-  manifest template.
+- `local/`: local HTTPS/SOCKS bridge, certificate setup, and systemd user service.
+- `registry/`: public shared directory and association publisher page.
 
-The extension is distributed as an unpacked developer extension; it is not yet
-published in the Chrome Web Store.
+The extension is distributed as an unpacked developer extension; it is not published in the Chrome Web Store.
 
-## Limitations
+## Limits
 
-- Curated manifest entries rely on users trusting the repository maintainer.
-  Only add names you own or have permission to publish.
-- QNS's **Set Resolved Address** field is for a Quilibrium address, not a web
-  URL. Web destinations use the signed Web Bridge association.
-- Each user needs the local bridge and its local `.q` certificate authority;
-  the extension alone cannot provide HTTPS for `.q` names.
-- The relay does not currently proxy WebSockets, which some web apps require.
-- Browser cookies and storage for `example.q` are separate from those for its
-  destination website.
+- Each user needs the bridge and local `.q` certificate authority on their own computer.
+- Associations saved in the popup are local to that installation. The shared directory is read-only for users.
+- Browser cookies and storage for `example.q` are separate from those for its destination website.
+- The bridge does not currently proxy WebSockets.

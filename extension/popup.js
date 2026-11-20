@@ -11,6 +11,52 @@ function normalizeName(value) {
 
 function setStatus(message) { $('status').textContent = message; }
 
+function renderDirectory(sites) {
+  const list = $('directory-list');
+  list.replaceChildren();
+  if (!sites.length) {
+    const empty = document.createElement('p');
+    empty.className = 'directory-state';
+    empty.textContent = 'Aucun site partagé pour le moment.';
+    list.append(empty);
+    return;
+  }
+  for (const site of sites) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'directory-entry';
+    button.setAttribute('role', 'listitem');
+    const name = document.createElement('strong');
+    name.textContent = site.name;
+    const target = document.createElement('span');
+    const destination = site.destination || {};
+    target.textContent = destination.kind === 'qstorage'
+      ? `QStorage · ${destination.bucket}`
+      : destination.kind === 'ip'
+        ? `Serveur · ${destination.ip}`
+        : `Site · ${destination.host || 'destination publiée'}`;
+    button.append(name, target);
+    button.addEventListener('click', async () => {
+      await chrome.tabs.create({url: 'https://' + site.name + '/'});
+      window.close();
+    });
+    list.append(button);
+  }
+}
+
+chrome.runtime.sendMessage({type: 'directory'}, response => {
+  const list = $('directory-list');
+  if (chrome.runtime.lastError || !response?.ok) {
+    list.replaceChildren();
+    const unavailable = document.createElement('p');
+    unavailable.className = 'directory-state';
+    unavailable.textContent = 'Relais local indisponible. Lance install.sh puis réessaie.';
+    list.append(unavailable);
+    return;
+  }
+  renderDirectory(response.data?.sites || []);
+});
+
 $('open-form').addEventListener('submit', async event => {
   event.preventDefault();
   try {

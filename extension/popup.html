@@ -16,6 +16,11 @@
       <a href="https://names.quilibrium.com/" target="_blank" rel="noopener noreferrer">Acheter un nom QNS <span aria-hidden="true">↗</span></a>
       <a href="https://qconsole.quilibrium.com/services/qstorage" target="_blank" rel="noopener noreferrer">Créer un bucket QStorage <span aria-hidden="true">↗</span></a>
     </nav>
+    <section class="panel directory-panel">
+      <h2>Annuaire .q partagé</h2>
+      <p class="hint">Ces sites sont publiés pour tous les utilisateurs de l’extension.</p>
+      <div id="directory-list" class="directory-list" role="list"><p class="directory-state">Chargement…</p></div>
+    </section>
     <section class="panel">
       <h2>Ouvrir un site .q</h2>
       <form id="open-form">
@@ -24,8 +29,8 @@
       </form>
     </section>
     <section class="panel">
-      <h2>Publier mon site .q</h2>
-      <p class="hint">La destination signée reste locale. Pour la partager, exporte le fichier puis ajoute-le au manifeste du bucket QStorage après vérification du propriétaire QNS.</p>
+      <h2>Associer un site sur cet appareil</h2>
+      <p class="hint">Cette association est locale à ton navigateur ; elle ne l’ajoute pas à l’annuaire partagé.</p>
       <form id="publish-form">
         <label for="name">Nom QNS</label>
         <input id="name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required>
@@ -36,7 +41,7 @@
           <input id="server-host" placeholder="www.exemple.com" autocomplete="off" spellcheck="false">
         </details>
         <p class="hint">Le portefeuille signe localement. La signature seule ne prouve pas l’appartenance QNS ; vérifie l’adresse du propriétaire avant tout partage.</p>
-        <button class="primary full" type="submit">Associer mon site .q</button>
+        <button class="primary full" type="submit">Enregistrer sur cet appareil</button>
       </form>
     </section>
     <p id="status" class="status" role="status"></p>

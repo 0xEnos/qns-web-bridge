@@ -360,6 +360,17 @@ async def api(request):
     if request.headers.get("X-QNS-Bridge") != "1":
         raise web.HTTPForbidden(text="Extension request required")
     resolver = request.app["resolver"]
+    if request.path == "/api/directory":
+        if request.method != "GET":
+            raise web.HTTPMethodNotAllowed(request.method, ["GET", "OPTIONS"])
+        await resolver.refresh_registry()
+        sites = []
+        for name, record in sorted(resolver.registry.items()):
+            try:
+                sites.append({"name": name, "destination": destination(record["destination"])})
+            except (KeyError, ValueError, TypeError):
+                continue
+        return web.json_response({"ok": True, "sites": sites}, headers=headers)
     if request.method == "GET":
         return web.json_response({"ok": True, "mappings": resolver.mappings}, headers=headers)
     if request.method == "POST":
@@ -466,6 +477,7 @@ async def main():
         admin["resolver"] = resolver
         admin.router.add_route("*", "/api/mappings", api)
         admin.router.add_route("*", "/api/mappings/{name}", api)
+        admin.router.add_route("*", "/api/directory", api)
         admin_runner = web.AppRunner(admin)
         await admin_runner.setup()
         await web.TCPSite(admin_runner, "127.0.0.1", API_PORT).start()
