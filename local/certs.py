@@ -66,7 +66,10 @@ def install_trust():
     cert = create_ca()
     old = Path.home() / ".pki/nssdb"
     current = Path.home() / ".local/share/pki/nssdb"
-    locations = [old, current] if old.exists() else [current]
+    # Chromium/Brave versions and distro builds consult different per-user NSS
+    # databases. Trust the local CA in both user stores; never touch system-wide
+    # trust or another browser profile.
+    locations = list(dict.fromkeys([old, current]))
     for location in locations:
         location.mkdir(mode=0o700, parents=True, exist_ok=True)
         if not (location / "cert9.db").exists():

@@ -16,4 +16,8 @@ sed "s|%h/hal/qns-bridge|$ROOT|g" "$ROOT/local/qns-bridge.service" > "$HOME/.con
 systemctl --user daemon-reload
 systemctl --user enable --now qns-bridge.service
 systemctl --user restart qns-bridge.service
-echo "Local bridge is running. Load $ROOT/extension in brave://extensions."
+if command -v brave >/dev/null 2>&1 || command -v brave-browser >/dev/null 2>&1; then
+  "$ROOT/launch-brave.sh" "https://obscura.q/"
+else
+  echo "Bridge installed. Install Brave, then run: $ROOT/launch-brave.sh https://obscura.q/"
+fi

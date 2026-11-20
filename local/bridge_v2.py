@@ -19,11 +19,12 @@ from multidict import CIMultiDict
 
 from certs import DATA_DIR, NAME_RE, create_leaf
 
-SOCKS_PORT = 17777
-HTTPS_PORT = 17778
-API_PORT = 17779
+SOCKS_PORT = int(os.environ.get("QNS_BRIDGE_SOCKS_PORT", "17777"))
+HTTPS_PORT = int(os.environ.get("QNS_BRIDGE_HTTPS_PORT", "17778"))
+API_PORT = int(os.environ.get("QNS_BRIDGE_API_PORT", "17779"))
 DEFAULT_REGISTRY_URLS = (
     "https://0xenos1.qstorage.quilibrium.com/registry/manifest.json",
+    "bundled://registry/manifest.json",
     "https://raw.githubusercontent.com/0xEnos/qns-web-bridge/main/registry/manifest.json",
 )
 REGISTRY_URLS = tuple(
@@ -176,9 +177,12 @@ class Resolver:
                 errors = []
                 for registry_url in REGISTRY_URLS:
                     try:
-                        async with self.session.get(registry_url) as response:
-                            response.raise_for_status()
-                            body = await response.content.read(MAX_REGISTRY_BYTES + 1)
+                        if registry_url == "bundled://registry/manifest.json":
+                            body = (PUBLISH_DIR / "manifest.json").read_bytes()
+                        else:
+                            async with self.session.get(registry_url) as response:
+                                response.raise_for_status()
+                                body = await response.content.read(MAX_REGISTRY_BYTES + 1)
                         if len(body) > MAX_REGISTRY_BYTES:
                             raise ValueError("Registry is too large")
                         document = json.loads(body)
