@@ -12,32 +12,12 @@
       <div class="logo" aria-hidden="true"><span>Q</span></div>
       <div><span class="eyebrow">QUILIBRIUM · QNS</span><h1>Web Bridge</h1><p>Your .q address, your site.</p></div>
     </header>
-    <nav class="service-links" aria-label="Quilibrium services">
-      <a href="https://names.quilibrium.com/" target="_blank" rel="noopener noreferrer">Get a QNS name <span aria-hidden="true">↗</span></a>
-      <a href="https://qconsole.quilibrium.com/services/qstorage" target="_blank" rel="noopener noreferrer">Get a QStorage bucket <span aria-hidden="true">↗</span></a>
-    </nav>
     <section class="panel">
       <h2>Open a .q site</h2>
       <form id="open-form">
         <label for="open-name">QNS name</label>
-        <div class="row"><input id="open-name" list="shared-sites" placeholder="Start typing a .q name" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Open</button></div>
+        <div class="row"><input id="open-name" list="shared-sites" placeholder="obscura.q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Open</button></div>
         <datalist id="shared-sites"></datalist>
-      </form>
-    </section>
-    <section class="panel">
-      <h2>Set up a site on this device</h2>
-      <p class="hint">This association is saved only in your browser; it is not added to the shared list.</p>
-      <form id="publish-form">
-        <label for="name">QNS name</label>
-        <input id="name" list="shared-sites" placeholder="mysite.q" autocomplete="off" spellcheck="false" required>
-        <label for="destination">Destination</label>
-        <input id="destination" placeholder="Server IP or QStorage bucket name" autocomplete="off" spellcheck="false" required>
-        <details id="host-details" hidden><summary>Does the server require a hostname?</summary>
-          <label for="server-host">Hostname</label>
-          <input id="server-host" placeholder="www.exemple.com" autocomplete="off" spellcheck="false">
-        </details>
-        <p class="hint">Your wallet signs locally. A signature alone does not prove QNS ownership; verify ownership before sharing.</p>
-        <button class="primary full" type="submit">Save on this device</button>
       </form>
     </section>
     <p id="status" class="status" role="status"></p>

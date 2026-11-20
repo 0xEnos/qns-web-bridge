@@ -13,6 +13,10 @@ fi
 
 profile_dir="${XDG_CONFIG_HOME:-$HOME/.config}/qns-web-bridge/brave-profile"
 mkdir -p -- "$profile_dir"
+if [[ ! -f "$script_dir/extension/manifest.json" ]]; then
+  printf 'Extension files are missing from %s. Reinstall QNS Web Bridge.\n' "$script_dir" >&2
+  exit 1
+fi
 if (($# == 0)); then
   set -- 'about:blank'
 fi
@@ -21,4 +25,5 @@ exec "$browser" \
   --load-extension="$script_dir/extension" \
   --disable-extensions-except="$script_dir/extension" \
   --no-first-run \
+  --new-window \
   "$@"

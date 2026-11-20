@@ -19,11 +19,12 @@ from multidict import CIMultiDict
 
 from certs import DATA_DIR, NAME_RE, create_leaf
 
-SOCKS_PORT = 17777
-HTTPS_PORT = 17778
-API_PORT = 17779
+SOCKS_PORT = int(os.environ.get("QNS_BRIDGE_SOCKS_PORT", "17777"))
+HTTPS_PORT = int(os.environ.get("QNS_BRIDGE_HTTPS_PORT", "17778"))
+API_PORT = int(os.environ.get("QNS_BRIDGE_API_PORT", "17779"))
 DEFAULT_REGISTRY_URLS = (
     "https://0xenos1.qstorage.quilibrium.com/registry/manifest.json",
+    "bundled://registry/manifest.json",
     "https://raw.githubusercontent.com/0xEnos/qns-web-bridge/main/registry/manifest.json",
 )
 REGISTRY_URLS = tuple(
@@ -176,9 +177,12 @@ class Resolver:
                 errors = []
                 for registry_url in REGISTRY_URLS:
                     try:
-                        async with self.session.get(registry_url) as response:
-                            response.raise_for_status()
-                            body = await response.content.read(MAX_REGISTRY_BYTES + 1)
+                        if registry_url == "bundled://registry/manifest.json":
+                            body = (PUBLISH_DIR / "manifest.json").read_bytes()
+                        else:
+                            async with self.session.get(registry_url) as response:
+                                response.raise_for_status()
+                                body = await response.content.read(MAX_REGISTRY_BYTES + 1)
                         if len(body) > MAX_REGISTRY_BYTES:
                             raise ValueError("Registry is too large")
                         document = json.loads(body)
@@ -329,6 +333,10 @@ async def website(request):
             if key.lower() in {"origin", "referer"}:
                 value = translated(value, public, origin)
             headers.add(key, value)
+        # aiohttp adds its own compression preferences when the inbound client
+        # did not send one. Make the preference explicit so the streamed body
+        # and the upstream Content-Encoding header always agree with the client.
+        headers["Accept-Encoding"] = request.headers.get("Accept-Encoding", "identity")
         headers["Host"] = ("[" + host + "]") if ":" in host else host
         data = request.content.iter_chunked(65536) if request.can_read_body else None
         async with request.app["session"].request(
@@ -464,10 +472,7 @@ async def main():
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:
         resolver = Resolver(session)
         contexts = {}
-        # Preserve the already trusted certificate on an upgraded workstation.
-        old_cert = DATA_DIR / "stonks.q.crt"
-        old_key = DATA_DIR / "stonks.q.key"
-        cert, key = (old_cert, old_key) if old_cert.exists() and old_key.exists() else create_leaf("stonks.q")
+        cert, key = create_leaf("stonks.q")
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(cert, key)
         contexts["stonks.q"] = context
