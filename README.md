@@ -1,53 +1,69 @@
-# QNS Web Sites (extension-only prototype)
+# QNS Web Sites for Brave
 
-This branch tests the simplest Brave-only path for the public `obscura.q` site.
-Install the unpacked `extension/` directory, then open `https://obscura.q` or
-choose it from the extension popup. The extension redirects that navigation to
-the site's public QStorage HTTPS origin, `https://0xenos.qstorage.quilibrium.com`.
-The same route is packaged with the extension, so every installation of this
-version gets the same result without local setup, a certificate, a Python
-bridge, a personal mapping, or a GitHub account.
+Open the supported Quilibrium `.q` website `obscura.q` in Brave with this
+extension. This version uses a small, built-in redirect and needs no Python
+bridge, local certificate, local name mapping, Proxima service, or account.
 
-## Install for a local test
+## Install
 
-1. Open `brave://extensions`.
-2. Enable **Developer mode** and click **Load unpacked**.
-3. Select this repository's `extension/` directory.
-4. Open `https://obscura.q`.
+1. Download the repository ZIP from GitHub and extract it.
+2. In Brave, open `brave://extensions` and enable **Developer mode**.
+3. Choose **Load unpacked** and select the `extension/` folder.
+4. Enter `https://obscura.q` in the address bar, or open the extension popup
+   and choose **obscura.q**.
 
-The first navigation changes the address bar to the public QStorage URL. This
-is required by the extension-only design: Brave extensions cannot add a `.q`
-DNS resolver or install a TLS authority, so they cannot keep `.q` as the final
-HTTPS origin without a local/network proxy or browser support for QNS.
+The address bar changes to `https://0xenos.qstorage.quilibrium.com`. The
+extension redirects the exact `obscura.q` main-page navigation to that public
+QStorage HTTPS origin. Page paths, query strings, and fragments are preserved.
+Other browser traffic is not redirected.
 
-## Current scope and limits
+## What other people can see
 
-- `obscura.q` is the only packaged route. Other `.q` names are not assumed to
-  host websites and are left untouched.
-- This is shared through distribution of the extension version, not through a
-  live directory. Adding a route requires a new extension build/update.
-- QNS currently resolves names to QNS records, but the public SDK/API does not
-  document a website-destination field that this extension can consume. The
-  packaged route is therefore a compatibility mapping, not proof that
-  `obscura.q` currently has an on-network QNS website record.
-- Public site content is still served by QStorage Proxy. This extension does
-  not make traffic anonymous or provide universal native QNS resolution.
+Anyone can view the public Obscura site from their own computer by installing
+this extension and opening `obscura.q`. They do not need to be on your device,
+use your GitHub account, or run a service on your computer. They can also open
+the public QStorage address directly in an ordinary browser.
 
-## Verify this branch
+The extension does **not** publish a visitor's own website, discover all `.q`
+names, or automatically add a site just because someone installs or uses it.
+For a website to be visible to other people, its files must already be served
+from a public web origin. For it to open under a `.q` alias, that alias must
+also have a route in a distributed extension build. This build contains only
+`obscura.q`; adding another alias requires updating and distributing the
+extension. A normal user cannot silently change the routes for everybody.
+
+So: other users can see **your public Obscura site** with this build. You can
+see someone else's public site only if it has a public URL and a supported
+`.q` route (or they give you the ordinary public URL). Installing the extension
+alone does not make either person's private or locally hosted files public.
+
+## Why the URL changes
+
+Brave extensions cannot provide a DNS resolver for the browser or install a
+TLS certificate authority. This extension therefore redirects the supported
+`.q` name to the site's real HTTPS origin. Keeping `obscura.q` in the address
+bar would require browser-level QNS support or a local/network resolver and
+HTTPS proxy, which this simplified extension-only build intentionally avoids.
+
+This is a compatibility route to public QStorage content, not universal native
+QNS resolution and not an anonymous Quilibrium proxy. It does not claim that
+the QNS protocol itself currently resolves every `.q` name to a web origin.
+
+## Tests
+
+Run the route checks with Node.js:
 
 ```sh
 node tests/test_extension_routes.js
+```
+
+The independent Brave smoke test opens the live site using a temporary browser
+profile and this extension only. It requires Brave and Python `aiohttp`:
+
+```sh
+python3 -m pip install aiohttp
 python3 tests/extension_only_acceptance.py
 ```
 
-The acceptance test needs Brave and Python `aiohttp`. It launches a separate,
-temporary Brave profile and opens the live QStorage site; it does not touch the
-normal Brave profile. The legacy bridge tests can also be run with
-`python3 -m unittest tests.test_bridge tests.test_certs` in an environment with
-the dependencies from `requirements.txt`.
-
-## Legacy bridge files
-
-`local/`, `install.sh`, and the older registry publisher are retained for
-reference and compatibility while this prototype is evaluated. The extension
-in this branch no longer configures the local proxy or calls those files.
+The test does not touch the regular Brave profile. The extension has no
+QStorage credentials or other administrative secrets.

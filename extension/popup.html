@@ -15,11 +15,12 @@
     <section class="panel">
       <h2>Open a .q site</h2>
       <form id="open-form">
-        <label for="open-name">Available .q site</label>
-        <div class="row"><input id="open-name" list="shared-sites" placeholder="obscura.q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Open</button></div>
-        <datalist id="shared-sites"></datalist>
+        <label for="open-name">Supported .q alias</label>
+        <div class="row"><input id="open-name" list="supported-sites" placeholder="obscura.q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Open</button></div>
+        <datalist id="supported-sites"></datalist>
       </form>
     </section>
+    <p class="status">This extension build currently includes obscura.q.</p>
     <p id="status" class="status" role="status"></p>
   </main>
   <script src="popup.js"></script>

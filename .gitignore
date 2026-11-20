@@ -1,12 +1,14 @@
-.venv/
+# Generated test/runtime artifacts
 __pycache__/
 *.py[cod]
-.env
-*.pem
-*.key
-*.crt
-local-data/
-registry/.well-known/
-registry/stonks.json
-dist/*.tar.gz
+
+# Keep generated extension metadata and packaging output out of source control
 extension/_metadata/
+dist/
+
+# Never commit local credentials or certificates
+.env
+*.key
+*.pem
+*.crt
+.venv/

@@ -3,7 +3,9 @@
 
 import asyncio
 import json
+import os
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -119,11 +121,19 @@ async def run():
                         "mainDocumentStatus": main_response["status"],
                     }, indent=2))
         finally:
-            process.terminate()
+            # Brave launches renderer/helper children. Stop the test-only
+            # process group so the temporary profile can be removed reliably.
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                process.kill()
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
                 process.wait(timeout=5)
 
 

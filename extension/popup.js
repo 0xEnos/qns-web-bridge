@@ -16,7 +16,7 @@ chrome.runtime.sendMessage({type: 'sites'}, response => {
   const options = response.sites
     .filter(site => NAME.test(String(site || '').toLowerCase()))
     .map(site => String(site).toLowerCase());
-  $('shared-sites').replaceChildren(...[...new Set(options)].sort().map(name => {
+  $('supported-sites').replaceChildren(...[...new Set(options)].sort().map(name => {
     const option = document.createElement('option');
     option.value = name;
     return option;
