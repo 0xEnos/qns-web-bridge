@@ -333,6 +333,10 @@ async def website(request):
             if key.lower() in {"origin", "referer"}:
                 value = translated(value, public, origin)
             headers.add(key, value)
+        # aiohttp adds its own compression preferences when the inbound client
+        # did not send one. Make the preference explicit so the streamed body
+        # and the upstream Content-Encoding header always agree with the client.
+        headers["Accept-Encoding"] = request.headers.get("Accept-Encoding", "identity")
         headers["Host"] = ("[" + host + "]") if ":" in host else host
         data = request.content.iter_chunked(65536) if request.can_read_body else None
         async with request.app["session"].request(
@@ -468,10 +472,7 @@ async def main():
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:
         resolver = Resolver(session)
         contexts = {}
-        # Preserve the already trusted certificate on an upgraded workstation.
-        old_cert = DATA_DIR / "stonks.q.crt"
-        old_key = DATA_DIR / "stonks.q.key"
-        cert, key = (old_cert, old_key) if old_cert.exists() and old_key.exists() else create_leaf("stonks.q")
+        cert, key = create_leaf("stonks.q")
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(cert, key)
         contexts["stonks.q"] = context
