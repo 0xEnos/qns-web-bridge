@@ -11,7 +11,7 @@
     <div class="mark">Q</div>
     <p class="eyebrow">QUILIBRIUM · QNS WEB BRIDGE</p>
     <h1>Votre nom .q mène à votre site.</h1>
-    <p class="intro">Cette page confirme l’association préparée dans Web Bridge. Vérifiez le nom QNS et la destination, puis signez avec le portefeuille qui détient ce nom. Rien n’est publié avant votre signature.</p>
+    <p class="intro">Cette page prépare une association signée. Le portefeuille signe localement ; aucune requête par nom n’est envoyée à un registre central.</p>
     <p id="prepared-summary" class="prepared-summary" role="status" hidden></p>
     <form id="publish">
       <label for="name">Mon nom QNS</label>
@@ -27,19 +27,11 @@
       <button type="submit">Vérifier et signer</button>
     </form>
     <p id="status" role="status"></p>
-    <p class="small">La signature ne déclenche aucune transaction. Votre site et son domaine HTTPS continuent de fonctionner normalement.</p>
+    <p class="small">La signature ne déclenche aucune transaction. Elle prouve quel portefeuille a signé, mais pas à elle seule que ce portefeuille possède le nom QNS. Vérifie le propriétaire avant d’ajouter le fichier téléchargé au manifeste QStorage partagé.</p>
   </main>
     <script>
       // Prefill synchronously from the extension URL, even if the main app script is cached or delayed.
       const qnsBridgeParams = new URLSearchParams(location.search);
-      const qnsBridgeName = qnsBridgeParams.get('name') || '';
-      const qnsBridgeTarget = qnsBridgeParams.get('kind') === 'qstorage'
-        ? qnsBridgeParams.get('bucket') : qnsBridgeParams.get('ip');
-      if (location.hostname === 'proxima.auction'
-          && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.q$/.test(qnsBridgeName)
-          && qnsBridgeTarget) {
-        location.replace('https://' + qnsBridgeName + '/.qns-web-bridge/publish?' + qnsBridgeParams.toString());
-      }
       if (qnsBridgeParams.has('name')) document.getElementById('name').value = qnsBridgeParams.get('name');
       if (qnsBridgeParams.get('kind') === 'ip' && qnsBridgeParams.has('ip')) {
         document.getElementById('destination').value = qnsBridgeParams.get('ip');
@@ -59,6 +51,6 @@
         summary.hidden = false;
       }
     </script>
-    <script src="publish.js?v=20261120-2"></script>
+    <script src="publish.js?v=20261120-3"></script>
 </body>
 </html>

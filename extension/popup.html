@@ -25,7 +25,7 @@
     </section>
     <section class="panel">
       <h2>Publier mon site .q</h2>
-      <p class="hint">Une fois publié, tous les utilisateurs de Web Bridge peuvent l’ouvrir avec son nom .q.</p>
+      <p class="hint">La destination signée reste locale. Pour la partager, exporte le fichier puis ajoute-le au manifeste du bucket QStorage après vérification du propriétaire QNS.</p>
       <form id="publish-form">
         <label for="name">Nom QNS</label>
         <input id="name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required>
@@ -33,9 +33,9 @@
         <input id="destination" placeholder="IP du serveur ou nom du bucket QStorage" autocomplete="off" spellcheck="false" required>
         <details id="host-details" hidden><summary>Le serveur attend un nom d’hôte ?</summary>
           <label for="server-host">Nom d’hôte</label>
-          <input id="server-host" placeholder="proxima.auction" autocomplete="off" spellcheck="false">
+          <input id="server-host" placeholder="www.exemple.com" autocomplete="off" spellcheck="false">
         </details>
-        <p class="hint">Vérifie les valeurs sur ton adresse .q, puis signe avec le portefeuille qui possède le nom.</p>
+        <p class="hint">Le portefeuille signe localement. La signature seule ne prouve pas l’appartenance QNS ; vérifie l’adresse du propriétaire avant tout partage.</p>
         <button class="primary full" type="submit">Associer mon site .q</button>
       </form>
     </section>

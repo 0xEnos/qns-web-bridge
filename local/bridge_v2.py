@@ -5,6 +5,7 @@ import asyncio
 import ipaddress
 import json
 import logging
+import os
 import re
 import ssl
 import time
@@ -21,10 +22,14 @@ from certs import DATA_DIR, NAME_RE, create_leaf
 SOCKS_PORT = 17777
 HTTPS_PORT = 17778
 API_PORT = 17779
-QNS_API = "https://names.quilibrium.com/resolve/"
-REGISTRY = "https://proxima.auction/.well-known/qns-bridge/"
-PUBLISH_API = "https://proxima.auction/api/qns-bridge/publish"
+REGISTRY_URL = os.environ.get(
+    "QNS_BRIDGE_REGISTRY_URL",
+    "https://0xenos1.qstorage.quilibrium.com/qns-web-bridge/registry.json",
+)
+REGISTRY_REFRESH_SECONDS = 3600
+MAX_REGISTRY_BYTES = 2 * 1024 * 1024
 MAPPINGS = DATA_DIR / "mappings.json"
+LOCAL_RECORDS_DIR = DATA_DIR / "records"
 PUBLISH_DIR = Path(__file__).resolve().parents[1] / "registry"
 PUBLISH_FILES = {
     "/.qns-web-bridge/publish": "publish.html",
@@ -82,13 +87,27 @@ def signed_message(name, target, timestamp, nonce):
             + "\nTimestamp: " + str(timestamp) + "\nNonce: " + nonce)
 
 
-async def get_json(session, url):
-    async with session.get(url) as response:
-        response.raise_for_status()
-        body = await response.content.read(16385)
-    if len(body) > 16384:
-        raise ValueError("QNS record too large")
-    return json.loads(body)
+def verify_record(name, record):
+    """Validate a signed association without asking a name-resolution service."""
+    if not isinstance(record, dict) or record.get("version") != 3 or record.get("name") != name:
+        raise ValueError("Invalid signed registry record")
+    if not NAME_RE.fullmatch(name):
+        raise ValueError("Invalid .q name")
+    owner = record.get("authorityKey", "")
+    timestamp, nonce, signature = (record.get(k) for k in ("timestamp", "nonce", "signature"))
+    if (not OWNER_RE.fullmatch(owner) or type(timestamp) is not int
+            or not isinstance(nonce, str) or not re.fullmatch(r"[0-9a-f]{32}", nonce)
+            or not isinstance(signature, str)
+            or not re.fullmatch(r"0x[0-9a-fA-F]{130}", signature)):
+        raise ValueError("Invalid signed registry record")
+    target = destination(record.get("destination"))
+    recovered = Account.recover_message(
+        encode_defunct(text=signed_message(name, target, timestamp, nonce)), signature=signature)
+    if recovered.lower() != owner.lower():
+        raise ValueError("Owner signature does not match the record")
+    return {"version": 3, "name": name, "authorityKey": owner,
+            "destination": target, "timestamp": timestamp, "nonce": nonce,
+            "signature": signature}
 
 
 class Resolver:
@@ -96,7 +115,17 @@ class Resolver:
         self.session = session
         self.cache = {}
         self.lock = asyncio.Lock()
+        self.registry_lock = asyncio.Lock()
+        self.registry = {}
+        self.registry_refresh_at = 0
         self.mappings = json.loads(MAPPINGS.read_text()) if MAPPINGS.exists() else {}
+        LOCAL_RECORDS_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+        for path in LOCAL_RECORDS_DIR.glob("*.json"):
+            try:
+                record = json.loads(path.read_text())
+                self.registry[record.get("name", "")] = verify_record(record.get("name", ""), record)
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                LOG.warning("Ignoring invalid local signed record: %s", path.name)
 
     def save(self, name, target):
         self.mappings[name] = target
@@ -118,6 +147,59 @@ class Resolver:
         tmp.replace(MAPPINGS)
         self.cache.clear()
 
+    def save_signed_record(self, record):
+        name = record["name"]
+        verified = verify_record(name, record)
+        tmp = LOCAL_RECORDS_DIR / (name[:-2] + ".tmp")
+        path = LOCAL_RECORDS_DIR / (name[:-2] + ".json")
+        tmp.write_text(json.dumps(verified, indent=2) + "\n")
+        tmp.chmod(0o600)
+        tmp.replace(path)
+        self.registry[name] = verified
+        self.cache.pop(name, None)
+
+    async def refresh_registry(self, force=False):
+        if not force and time.monotonic() < self.registry_refresh_at:
+            return
+        async with self.registry_lock:
+            if not force and time.monotonic() < self.registry_refresh_at:
+                return
+            try:
+                async with self.session.get(REGISTRY_URL) as response:
+                    response.raise_for_status()
+                    body = await response.content.read(MAX_REGISTRY_BYTES + 1)
+                if len(body) > MAX_REGISTRY_BYTES:
+                    raise ValueError("QStorage registry is too large")
+                document = json.loads(body)
+                if not isinstance(document, dict) or document.get("version") != 1:
+                    raise ValueError("Unsupported QStorage registry format")
+                entries = document.get("sites", [])
+                if isinstance(entries, dict):
+                    entries = [
+                        dict(entry, name=entry.get("name", name))
+                        for name, entry in entries.items()
+                        if isinstance(entry, dict)
+                    ]
+                if not isinstance(entries, list) or len(entries) > 10000:
+                    raise ValueError("Invalid QStorage registry entries")
+                verified = {}
+                for entry in entries:
+                    name = entry.get("name", "") if isinstance(entry, dict) else ""
+                    try:
+                        verified[name] = verify_record(name, entry)
+                    except (ValueError, TypeError):
+                        LOG.warning("Ignoring invalid QStorage registry entry: %s", name)
+                for name, entry in self.registry.items():
+                    if (LOCAL_RECORDS_DIR / (name[:-2] + ".json")).exists():
+                        verified[name] = entry
+                self.registry = verified
+                self.registry_refresh_at = time.monotonic() + REGISTRY_REFRESH_SECONDS
+                LOG.info("Loaded %d signed .q associations from the QStorage manifest", len(verified))
+            except Exception as exc:
+                # Keep the last valid snapshot and retry soon; no per-name fallback.
+                self.registry_refresh_at = time.monotonic() + 300
+                LOG.warning("QStorage manifest unavailable: %s", exc)
+
     async def target(self, name):
         if not NAME_RE.fullmatch(name):
             raise ValueError("Invalid .q name")
@@ -125,41 +207,16 @@ class Resolver:
             cached = self.cache.get(name)
             if cached and cached[1] > time.monotonic():
                 return cached[0]
-            label = name[:-2]
-            qns = await get_json(self.session, QNS_API + label)
-            header = qns.get("header") or {}
-            owner = header.get("authorityKey", "")
-            if header.get("name") != label or not OWNER_RE.fullmatch(owner):
-                raise ValueError("QNS ownership could not be verified")
             if name in self.mappings:
                 target = destination(self.mappings[name])
             else:
-                record = await get_json(self.session, REGISTRY + label + ".json")
-                if record.get("name") != name or record.get("authorityKey", "").lower() != owner.lower():
-                    raise ValueError("Published record does not match the QNS owner")
-                target = destination(record.get("destination", record.get("target")))
-                if record.get("version") == 3:
-                    timestamp, nonce, signature = (record.get(k) for k in ("timestamp", "nonce", "signature"))
-                    if not isinstance(timestamp, int) or not isinstance(nonce, str) or not isinstance(signature, str):
-                        raise ValueError("Invalid owner signature")
-                    recovered = Account.recover_message(
-                        encode_defunct(text=signed_message(name, target, timestamp, nonce)), signature=signature)
-                    if recovered.lower() != owner.lower():
-                        raise ValueError("Owner signature does not match QNS")
-                elif record.get("version") == 2:
-                    timestamp, nonce, signature = (record.get(k) for k in ("timestamp", "nonce", "signature"))
-                    if not isinstance(timestamp, int) or not isinstance(nonce, str) or not isinstance(signature, str):
-                        raise ValueError("Invalid owner signature")
-                    recovered = Account.recover_message(
-                        encode_defunct(text=("QNS Web Bridge v2\nName: " + name + "\nTarget: "
-                                             + target["host"] + "/\nTimestamp: " + str(timestamp)
-                                             + "\nNonce: " + nonce)),
-                        signature=signature,
-                    )
-                    if recovered.lower() != owner.lower():
-                        raise ValueError("Owner signature does not match QNS")
-                elif record.get("version") != 1 or name != "stonks.q":
-                    raise ValueError("Unsigned publication is not accepted")
+                record = self.registry.get(name)
+                if not record:
+                    await self.refresh_registry()
+                    record = self.registry.get(name)
+                if not record:
+                    raise ValueError("No signed association for this .q name in the QStorage manifest")
+                target = destination(record["destination"])
             self.cache[name] = (target, time.monotonic() + 60)
             return target
 
@@ -181,15 +238,28 @@ async def publish_page(request, name):
             raise web.HTTPBadRequest(text="Publication invalide") from exc
         if not isinstance(data, dict) or data.get("name") != name:
             raise web.HTTPBadRequest(text="Le nom signé doit correspondre à l’adresse .q ouverte")
-        async with request.app["session"].post(
-            PUBLISH_API, data=body, headers={"Content-Type": "application/json"}
-        ) as response:
-            result = await response.read()
-            return web.Response(
-                status=response.status, body=result,
-                content_type=response.content_type or "text/plain",
-                headers={"Cache-Control": "no-store"},
+        try:
+            target = destination(data.get("destination"))
+            timestamp, nonce, signature = (data.get(k) for k in ("timestamp", "nonce", "signature"))
+            if (type(timestamp) is not int or abs(time.time() - timestamp) > 300
+                    or not isinstance(nonce, str) or not re.fullmatch(r"[0-9a-f]{32}", nonce)
+                    or not isinstance(signature, str)
+                    or not re.fullmatch(r"0x[0-9a-fA-F]{130}", signature)):
+                raise ValueError("Signature expirée ou invalide")
+            signer = Account.recover_message(
+                encode_defunct(text=signed_message(
+                    name, target, timestamp, nonce)), signature=signature,
             )
+            record = verify_record(name, {
+                "version": 3, "name": name, "authorityKey": signer,
+                "destination": target, "timestamp": timestamp,
+                "nonce": nonce, "signature": signature,
+            })
+            request.app["resolver"].save_signed_record(record)
+        except (ValueError, TypeError) as exc:
+            raise web.HTTPBadRequest(text=str(exc)) from exc
+        return web.json_response({"ok": True, "record": record, "registryUrl": REGISTRY_URL},
+                                headers={"Cache-Control": "no-store"})
     filename = PUBLISH_FILES.get(request.path)
     if filename and request.method in ("GET", "HEAD"):
         return web.FileResponse(

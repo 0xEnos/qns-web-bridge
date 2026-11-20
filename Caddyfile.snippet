@@ -1,12 +1,5 @@
-handle /.well-known/qns-bridge/* {
-    root * /srv/qns-bridge
-    file_server
-}
 handle_path /qns-bridge/* {
     root * /srv/qns-bridge-ui
     try_files {path} {path}.html
     file_server
-}
-handle /api/qns-bridge/publish {
-    reverse_proxy 127.0.0.1:17780
 }
