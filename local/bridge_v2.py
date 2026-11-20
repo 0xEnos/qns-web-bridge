@@ -22,9 +22,15 @@ from certs import DATA_DIR, NAME_RE, create_leaf
 SOCKS_PORT = 17777
 HTTPS_PORT = 17778
 API_PORT = 17779
-REGISTRY_URL = os.environ.get(
-    "QNS_BRIDGE_REGISTRY_URL",
+DEFAULT_REGISTRY_URLS = (
+    "https://0xenos1.qstorage.quilibrium.com/registry/manifest.json",
     "https://raw.githubusercontent.com/0xEnos/qns-web-bridge/main/registry/manifest.json",
+)
+REGISTRY_URLS = tuple(
+    url.strip() for url in os.environ.get(
+        "QNS_BRIDGE_REGISTRY_URLS",
+        os.environ.get("QNS_BRIDGE_REGISTRY_URL", ",".join(DEFAULT_REGISTRY_URLS)),
+    ).split(",") if url.strip()
 )
 REGISTRY_REFRESH_SECONDS = 3600
 MAX_REGISTRY_BYTES = 2 * 1024 * 1024
@@ -165,46 +171,56 @@ class Resolver:
             if not force and time.monotonic() < self.registry_refresh_at:
                 return
             try:
-                async with self.session.get(REGISTRY_URL) as response:
-                    response.raise_for_status()
-                    body = await response.content.read(MAX_REGISTRY_BYTES + 1)
-                if len(body) > MAX_REGISTRY_BYTES:
-                    raise ValueError("QStorage registry is too large")
-                document = json.loads(body)
-                if not isinstance(document, dict) or document.get("version") != 1:
-                    raise ValueError("Unsupported QStorage registry format")
-                entries = document.get("sites", [])
-                if isinstance(entries, dict):
-                    entries = [
-                        dict(entry, name=entry.get("name", name))
-                        for name, entry in entries.items()
-                        if isinstance(entry, dict)
-                    ]
-                if not isinstance(entries, list) or len(entries) > 10000:
-                    raise ValueError("Invalid QStorage registry entries")
                 verified = {}
-                for entry in entries:
-                    name = entry.get("name", "") if isinstance(entry, dict) else ""
+                succeeded = False
+                errors = []
+                for registry_url in REGISTRY_URLS:
                     try:
-                        if entry.get("version") == 3:
-                            verified[name] = verify_record(name, entry)
-                        elif entry.get("curated") is True:
-                            if not NAME_RE.fullmatch(name) or entry.get("name") != name:
-                                raise ValueError("Invalid curated .q name")
-                            verified[name] = {
-                                "version": 1, "name": name,
-                                "destination": destination(entry.get("destination")),
-                            }
-                        else:
-                            raise ValueError("Entry is neither signed nor curator-approved")
-                    except (ValueError, TypeError):
-                        LOG.warning("Ignoring invalid public manifest entry: %s", name)
+                        async with self.session.get(registry_url) as response:
+                            response.raise_for_status()
+                            body = await response.content.read(MAX_REGISTRY_BYTES + 1)
+                        if len(body) > MAX_REGISTRY_BYTES:
+                            raise ValueError("Registry is too large")
+                        document = json.loads(body)
+                        if not isinstance(document, dict) or document.get("version") != 1:
+                            raise ValueError("Unsupported registry format")
+                        entries = document.get("sites", [])
+                        if isinstance(entries, dict):
+                            entries = [
+                                dict(entry, name=entry.get("name", name))
+                                for name, entry in entries.items()
+                                if isinstance(entry, dict)
+                            ]
+                        if not isinstance(entries, list) or len(entries) > 10000:
+                            raise ValueError("Invalid registry entries")
+                        succeeded = True
+                        for entry in entries:
+                            name = entry.get("name", "") if isinstance(entry, dict) else ""
+                            try:
+                                if entry.get("version") == 3:
+                                    verified.setdefault(name, verify_record(name, entry))
+                                elif entry.get("curated") is True:
+                                    if not NAME_RE.fullmatch(name) or entry.get("name") != name:
+                                        raise ValueError("Invalid curated .q name")
+                                    verified.setdefault(name, {
+                                        "version": 1, "name": name,
+                                        "destination": destination(entry.get("destination")),
+                                    })
+                                else:
+                                    raise ValueError("Entry is neither signed nor curator-approved")
+                            except (ValueError, TypeError):
+                                LOG.warning("Ignoring invalid public manifest entry: %s", name)
+                    except Exception as exc:
+                        errors.append(f"{registry_url}: {exc}")
+                        LOG.warning("Directory source unavailable (%s): %s", registry_url, exc)
+                if not succeeded:
+                    raise ValueError("; ".join(errors))
                 for name, entry in self.registry.items():
                     if (LOCAL_RECORDS_DIR / (name[:-2] + ".json")).exists():
                         verified[name] = entry
                 self.registry = verified
                 self.registry_refresh_at = time.monotonic() + REGISTRY_REFRESH_SECONDS
-                LOG.info("Loaded %d signed .q associations from the QStorage manifest", len(verified))
+                LOG.info("Loaded %d .q associations from the shared directory sources", len(verified))
             except Exception as exc:
                 # Keep the last valid snapshot and retry soon; no per-name fallback.
                 self.registry_refresh_at = time.monotonic() + 300
@@ -268,7 +284,7 @@ async def publish_page(request, name):
             request.app["resolver"].save_signed_record(record)
         except (ValueError, TypeError) as exc:
             raise web.HTTPBadRequest(text=str(exc)) from exc
-        return web.json_response({"ok": True, "record": record, "registryUrl": REGISTRY_URL},
+        return web.json_response({"ok": True, "record": record, "registryUrls": REGISTRY_URLS},
                                 headers={"Cache-Control": "no-store"})
     filename = PUBLISH_FILES.get(request.path)
     if filename and request.method in ("GET", "HEAD"):

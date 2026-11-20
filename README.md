@@ -18,9 +18,9 @@ The installer creates a local CA and bridge for that computer. It does not insta
 
 ## Shared directory
 
-The extension downloads one public JSON directory from this repository and uses its names as autocomplete suggestions in the existing QNS field. The bridge caches the whole file for up to one hour. It does not ask a per-name resolver when a person visits a listed `.q` site, and this project does not contact `proxima.auction`.
+The extension downloads the shared directory from the public QStorage bucket `0xenos1` first, then falls back to this repository's manifest. It uses those names as autocomplete suggestions in the existing QNS field and caches the complete directory for up to one hour. It does not ask a per-name resolver when a person visits a listed `.q` site, and this project does not contact `proxima.auction`.
 
-The directory currently contains curated associations maintained in this repository. Everyone can browse those entries without a GitHub account. Saving an association with the extension currently saves it only on that computer; it does not publish it for other users. Do not put QStorage credentials or private keys in the extension. A static public bucket or manifest can distribute a directory, but cannot safely accept anonymous updates by itself.
+At the time of this release, `0xenos1` serves the static test page but does not yet contain `registry/manifest.json`, so the extension continues to use the GitHub fallback. The shared manifest contains curated associations maintained in this repository. Everyone can browse them without a GitHub account. Saving an association with the extension still saves it only on that computer; it does not publish it for other users. Do not put QStorage credentials or private keys in the extension. A public QStorage object can distribute the directory, but its write access must be configured safely before automatic public submissions can be enabled.
 
 The registry host can observe when the full directory is downloaded and the downloader's IP address. It does not learn which entry is opened from that download.
 
@@ -32,13 +32,13 @@ The registry host can observe when the full directory is downloaded and the down
 
 - `extension/`: Brave extension.
 - `local/`: local HTTPS/SOCKS bridge, certificate setup, and systemd user service.
-- `registry/`: public shared directory and association publisher page.
+- `registry/`: shared directory source and association-signing page.
 
 The extension is distributed as an unpacked developer extension; it is not published in the Chrome Web Store.
 
 ## Limits
 
 - Each user needs the bridge and local `.q` certificate authority on their own computer.
-- Associations saved in the popup are local to that installation. The shared directory is read-only for users.
+- Associations saved in the popup are local to that installation. Public automatic submissions are not enabled yet.
 - Browser cookies and storage for `example.q` are separate from those for its destination website.
 - The bridge does not currently proxy WebSockets.
