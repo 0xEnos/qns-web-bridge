@@ -16,16 +16,12 @@
       <a href="https://names.quilibrium.com/" target="_blank" rel="noopener noreferrer">Acheter un nom QNS <span aria-hidden="true">↗</span></a>
       <a href="https://qconsole.quilibrium.com/services/qstorage" target="_blank" rel="noopener noreferrer">Créer un bucket QStorage <span aria-hidden="true">↗</span></a>
     </nav>
-    <section class="panel directory-panel">
-      <h2>Annuaire .q partagé</h2>
-      <p class="hint">Ces sites sont publiés pour tous les utilisateurs de l’extension.</p>
-      <div id="directory-list" class="directory-list" role="list"><p class="directory-state">Chargement…</p></div>
-    </section>
     <section class="panel">
       <h2>Ouvrir un site .q</h2>
       <form id="open-form">
         <label for="open-name">Nom QNS</label>
-        <div class="row"><input id="open-name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Ouvrir</button></div>
+        <div class="row"><input id="open-name" list="shared-sites" placeholder="Commence à taper un nom .q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Ouvrir</button></div>
+        <datalist id="shared-sites"></datalist>
       </form>
     </section>
     <section class="panel">
@@ -33,7 +29,7 @@
       <p class="hint">Cette association est locale à ton navigateur ; elle ne l’ajoute pas à l’annuaire partagé.</p>
       <form id="publish-form">
         <label for="name">Nom QNS</label>
-        <input id="name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required>
+        <input id="name" list="shared-sites" placeholder="monsite.q" autocomplete="off" spellcheck="false" required>
         <label for="destination">Destination</label>
         <input id="destination" placeholder="IP du serveur ou nom du bucket QStorage" autocomplete="off" spellcheck="false" required>
         <details id="host-details" hidden><summary>Le serveur attend un nom d’hôte ?</summary>

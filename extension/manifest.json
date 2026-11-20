@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "QNS Web Bridge",
-  "version": "0.6.1",
-  "description": "Ouvre les sites .q en HTTPS et affiche l’annuaire partagé.",
+  "version": "0.6.2",
+  "description": "Ouvre les sites .q en HTTPS avec suggestions de noms partagés.",
   "icons": {
     "16": "icon16.png",
     "32": "icon32.png",

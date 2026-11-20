@@ -12,13 +12,13 @@ cd qns-web-bridge
 ./install.sh
 ```
 
-Then open `brave://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` directory. Open the extension popup and click a site in **Shared .q directory**, or enter a `.q` name.
+Then open `brave://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` directory. In the popup, type the first letters of a shared `.q` name in the existing **Nom QNS** field and choose its suggestion, or enter a name directly.
 
 The installer creates a local CA and bridge for that computer. It does not install the extension automatically. The CA and private key stay under `~/.local/share/qns-bridge/`; never share that directory.
 
 ## Shared directory
 
-The extension downloads one public JSON directory from this repository and shows the published sites in its popup. The bridge caches the whole file for up to one hour. It does not ask a per-name resolver when a person visits a listed `.q` site, and this project does not contact `proxima.auction`.
+The extension downloads one public JSON directory from this repository and uses its names as autocomplete suggestions in the existing QNS field. The bridge caches the whole file for up to one hour. It does not ask a per-name resolver when a person visits a listed `.q` site, and this project does not contact `proxima.auction`.
 
 The directory currently contains curated associations maintained in this repository. Everyone can browse those entries without a GitHub account. Saving an association with the extension currently saves it only on that computer; it does not publish it for other users. Do not put QStorage credentials or private keys in the extension. A static public bucket or manifest can distribute a directory, but cannot safely accept anonymous updates by itself.
 
