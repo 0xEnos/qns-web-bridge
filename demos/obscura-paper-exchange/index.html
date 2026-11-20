@@ -89,7 +89,7 @@
           const arr=historyPrices[name] ||= [];arr.push({t:Date.now(),p:mark});if(arr.length>180)arr.shift();
         }
         lastFetch=Date.now();el('live-dot').className='dot live';el('connection').textContent='Données reçues · '+new Date(lastFetch).toLocaleTimeString('fr-FR');
-        render();
+        renderPaper();
       }catch(error){el('live-dot').className='dot error';el('connection').textContent='Marchés indisponibles · '+String(error.message||error);}
     }
     function renderMarkets(){
