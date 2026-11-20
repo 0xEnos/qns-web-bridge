@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QNS Web Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="logo" aria-hidden="true"><span>Q</span></div>
+      <div><span class="eyebrow">QUILIBRIUM · QNS</span><h1>Web Bridge</h1><p>Votre adresse .q, votre site.</p></div>
+    </header>
+    <nav class="service-links" aria-label="Services Quilibrium">
+      <a href="https://names.quilibrium.com/" target="_blank" rel="noopener noreferrer">Acheter un nom QNS <span aria-hidden="true">↗</span></a>
+      <a href="https://qconsole.quilibrium.com/services/qstorage" target="_blank" rel="noopener noreferrer">Créer un bucket QStorage <span aria-hidden="true">↗</span></a>
+    </nav>
+    <section class="panel">
+      <h2>Ouvrir un site .q</h2>
+      <form id="open-form">
+        <label for="open-name">Nom QNS</label>
+        <div class="row"><input id="open-name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Ouvrir</button></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Publier mon site .q</h2>
+      <p class="hint">Une fois publié, tous les utilisateurs de Web Bridge peuvent l’ouvrir avec son nom .q.</p>
+      <form id="publish-form">
+        <label for="name">Nom QNS</label>
+        <input id="name" placeholder="monsite.q" autocomplete="off" spellcheck="false" required>
+        <label for="destination">Destination</label>
+        <input id="destination" placeholder="IP du serveur ou nom du bucket QStorage" autocomplete="off" spellcheck="false" required>
+        <details id="host-details" hidden><summary>Le serveur attend un nom d’hôte ?</summary>
+          <label for="server-host">Nom d’hôte</label>
+          <input id="server-host" placeholder="proxima.auction" autocomplete="off" spellcheck="false">
+        </details>
+        <p class="hint">Vérifie les valeurs sur ton adresse .q, puis signe avec le portefeuille qui possède le nom.</p>
+        <button class="primary full" type="submit">Associer mon site .q</button>
+      </form>
+    </section>
+    <p id="status" class="status" role="status"></p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

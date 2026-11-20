@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Publier mon site .q · QNS Web Bridge</title>
+  <link rel="stylesheet" href="publish.css?v=20261120-1">
+</head>
+<body>
+  <main>
+    <div class="mark">Q</div>
+    <p class="eyebrow">QUILIBRIUM · QNS WEB BRIDGE</p>
+    <h1>Votre nom .q mène à votre site.</h1>
+    <p class="intro">Cette page confirme l’association préparée dans Web Bridge. Vérifiez le nom QNS et la destination, puis signez avec le portefeuille qui détient ce nom. Rien n’est publié avant votre signature.</p>
+    <p id="prepared-summary" class="prepared-summary" role="status" hidden></p>
+    <form id="publish">
+      <label for="name">Mon nom QNS</label>
+      <input id="name" placeholder="monsite.q" required autocomplete="off" spellcheck="false">
+      <label for="destination">Destination</label>
+      <input id="destination" placeholder="IP publique ou bucket QStorage" required autocomplete="off" spellcheck="false">
+      <p class="small">Pour QStorage, indiquez seulement le nom du bucket.</p>
+      <details id="host-details" hidden>
+        <summary>Site hébergé sur un domaine ? (optionnel)</summary>
+        <label for="server-host">Nom d’hôte attendu par le serveur</label>
+        <input id="server-host" placeholder="monsite.example" autocomplete="off" spellcheck="false">
+      </details>
+      <button type="submit">Vérifier et signer</button>
+    </form>
+    <p id="status" role="status"></p>
+    <p class="small">La signature ne déclenche aucune transaction. Votre site et son domaine HTTPS continuent de fonctionner normalement.</p>
+  </main>
+    <script>
+      // Prefill synchronously from the extension URL, even if the main app script is cached or delayed.
+      const qnsBridgeParams = new URLSearchParams(location.search);
+      const qnsBridgeName = qnsBridgeParams.get('name') || '';
+      const qnsBridgeTarget = qnsBridgeParams.get('kind') === 'qstorage'
+        ? qnsBridgeParams.get('bucket') : qnsBridgeParams.get('ip');
+      if (location.hostname === 'proxima.auction'
+          && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.q$/.test(qnsBridgeName)
+          && qnsBridgeTarget) {
+        location.replace('https://' + qnsBridgeName + '/.qns-web-bridge/publish?' + qnsBridgeParams.toString());
+      }
+      if (qnsBridgeParams.has('name')) document.getElementById('name').value = qnsBridgeParams.get('name');
+      if (qnsBridgeParams.get('kind') === 'ip' && qnsBridgeParams.has('ip')) {
+        document.getElementById('destination').value = qnsBridgeParams.get('ip');
+        if (qnsBridgeParams.has('host') && qnsBridgeParams.get('host')) {
+          document.getElementById('host-details').hidden = false;
+          document.getElementById('server-host').value = qnsBridgeParams.get('host');
+        }
+      } else if (qnsBridgeParams.get('kind') === 'qstorage' && qnsBridgeParams.has('bucket')) {
+        document.getElementById('destination').value = qnsBridgeParams.get('bucket');
+      }
+      const preparedName = document.getElementById('name').value;
+      const preparedDestination = document.getElementById('destination').value;
+      if (preparedName && preparedDestination) {
+        const summary = document.getElementById('prepared-summary');
+        const kindLabel = qnsBridgeParams.get('kind') === 'qstorage' ? 'bucket QStorage' : 'serveur';
+        summary.textContent = `À vérifier et signer : ${preparedName} → ${preparedDestination} (${kindLabel})`;
+        summary.hidden = false;
+      }
+    </script>
+    <script src="publish.js?v=20261120-2"></script>
+</body>
+</html>
