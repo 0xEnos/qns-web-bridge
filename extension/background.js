@@ -1,46 +1,36 @@
 'use strict';
 
-// Only one-label .q names use the local bridge. Every other host is direct.
-const PAC = `function FindProxyForURL(url, host) {
-  if (/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.q$/i.test(host)) {
-    return 'SOCKS5 127.0.0.1:17777';
-  }
-  return 'DIRECT';
-}`;
+// Packaged routes work offline and identically on every installation of this
+// extension version. A QNS name only maps to a public website when its owner
+// has a route here; native QNS records currently do not expose a documented
+// web-destination field.
+const ROUTES = Object.freeze({
+  'obscura.q': 'https://0xenos.qstorage.quilibrium.com',
+});
 
-async function installProxy() {
-  await chrome.proxy.settings.set({
-    value: {mode: 'pac_script', pacScript: {data: PAC}},
-    scope: 'regular',
+function resolveRoute(input) {
+  const source = new URL(input);
+  const host = source.hostname.toLowerCase().replace(/\.$/, '');
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.q$/.test(host)) return null;
+  const origin = ROUTES[host];
+  if (!origin) return null;
+  const target = new URL(origin);
+  target.pathname = source.pathname;
+  target.search = source.search;
+  target.hash = source.hash;
+  return target.href;
+}
+
+// Brave/Chromium extensions cannot install a resolver or TLS authority. The
+// packaged declarativeNetRequest rule redirects this exact host before DNS;
+// the content is opened from its real public HTTPS origin, so the address bar
+// changes to the QStorage URL. It never intercepts non-.q sites.
+if (typeof chrome !== 'undefined') {
+  chrome.runtime.onMessage.addListener((message, sender, reply) => {
+    if (sender.id !== chrome.runtime.id || message?.type !== 'sites') return;
+    reply({sites: Object.keys(ROUTES).sort()});
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => { installProxy().catch(console.error); });
-chrome.runtime.onStartup.addListener(() => { installProxy().catch(console.error); });
-installProxy().catch(console.error);
-
-chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id || !['list', 'save', 'delete', 'directory'].includes(message?.type)) return;
-  const name = String(message.name || '');
-  if (message.type === 'directory') {
-    fetch('http://127.0.0.1:17779/api/directory', {headers: {'X-QNS-Bridge': '1'}})
-      .then(async response => {
-        const body = await response.text();
-        if (!response.ok) throw new Error(body || `HTTP ${response.status}`);
-        reply({ok: true, data: JSON.parse(body)});
-      }).catch(error => reply({ok: false, error: String(error.message || error)}));
-    return true;
-  }
-  const suffix = message.type === 'delete' ? '/' + encodeURIComponent(name) : '';
-  const method = message.type === 'save' ? 'POST' : message.type === 'delete' ? 'DELETE' : 'GET';
-  fetch('http://127.0.0.1:17779/api/mappings' + suffix, {
-    method,
-    headers: {'Content-Type': 'application/json', 'X-QNS-Bridge': '1'},
-    body: method === 'POST' ? JSON.stringify({name, destination: message.destination}) : undefined,
-  }).then(async response => {
-    const body = await response.text();
-    if (!response.ok) throw new Error(body || `HTTP ${response.status}`);
-    reply({ok: true, data: JSON.parse(body)});
-  }).catch(error => reply({ok: false, error: String(error.message || error)}));
-  return true;
-});
+// Export only for the lightweight Node tests; Chromium ignores this branch.
+if (typeof module !== 'undefined') module.exports = {resolveRoute};

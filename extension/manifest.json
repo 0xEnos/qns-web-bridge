@@ -1,23 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "QNS Web Bridge",
-  "version": "0.6.3",
-  "description": "Open .q websites over HTTPS with shared name suggestions.",
+  "name": "QNS Web Sites",
+  "version": "0.7.0",
+  "description": "Open packaged Quilibrium .q websites in Brave.",
   "icons": {
     "16": "icon16.png",
     "32": "icon32.png",
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "permissions": [
-    "proxy",
-    "storage"
-  ],
+  "permissions": ["declarativeNetRequestWithHostAccess"],
   "host_permissions": [
-    "http://127.0.0.1:17779/*"
+    "http://obscura.q/*",
+    "https://obscura.q/*",
+    "https://0xenos.qstorage.quilibrium.com/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {"id": "q_sites", "enabled": true, "path": "redirect_rules.json"}
+    ]
+  },
   "action": {
-    "default_title": "QNS Web Bridge",
+    "default_title": "QNS Web Sites",
     "default_popup": "popup.html"
   },
   "background": {

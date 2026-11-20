@@ -1,65 +1,53 @@
-# QNS Web Bridge
+# QNS Web Sites (extension-only prototype)
 
-QNS Web Bridge opens the bundled `obscura.q` site in a separate Brave profile. It provides local SOCKS5 routing and HTTPS termination for `.q` names whose associations are included in the bundled manifest. It is not a universal QNS resolver or an anonymous Quilibrium proxy.
+This branch tests the simplest Brave-only path for the public `obscura.q` site.
+Install the unpacked `extension/` directory, then open `https://obscura.q` or
+choose it from the extension popup. The extension redirects that navigation to
+the site's public QStorage HTTPS origin, `https://0xenos.qstorage.quilibrium.com`.
+The same route is packaged with the extension, so every installation of this
+version gets the same result without local setup, a certificate, a Python
+bridge, a personal mapping, or a GitHub account.
 
-## Linux install
+## Install for a local test
 
-Install Brave first if it is not already installed. Then download and extract the Linux package, or clone the repository, and run:
+1. Open `brave://extensions`.
+2. Enable **Developer mode** and click **Load unpacked**.
+3. Select this repository's `extension/` directory.
+4. Open `https://obscura.q`.
 
-```sh
-./install.sh
-```
+The first navigation changes the address bar to the public QStorage URL. This
+is required by the extension-only design: Brave extensions cannot add a `.q`
+DNS resolver or install a TLS authority, so they cannot keep `.q` as the final
+HTTPS origin without a local/network proxy or browser support for QNS.
 
-The installer checks for Python 3.10+, OpenSSL, NSS `certutil`, systemd user services, and Brave. It creates a private Python virtual environment using the exact package versions in `requirements-linux.lock`, issues and trusts the local `.q` certificate authority, enables the per-user bridge service, and opens `https://obscura.q/` in the dedicated `QNS Web Bridge` profile. It does not change system-wide certificate trust, another browser's data, or Brave's ordinary profile. If system packages are missing, rerun with `./install.sh --install-deps`; the installer displays the package list and requires confirmation before using apt, dnf, or pacman.
+## Current scope and limits
 
-Use `./qns-web-bridge.sh` to start the bridge if needed and open the dedicated Brave profile later. To open another bundled `.q` name, pass it as an argument, such as `./qns-web-bridge.sh https://obscura.q/`.
+- `obscura.q` is the only packaged route. Other `.q` names are not assumed to
+  host websites and are left untouched.
+- This is shared through distribution of the extension version, not through a
+  live directory. Adding a route requires a new extension build/update.
+- QNS currently resolves names to QNS records, but the public SDK/API does not
+  document a website-destination field that this extension can consume. The
+  packaged route is therefore a compatibility mapping, not proof that
+  `obscura.q` currently has an on-network QNS website record.
+- Public site content is still served by QStorage Proxy. This extension does
+  not make traffic anonymous or provide universal native QNS resolution.
 
-## Certificate scope and data
-
-The bridge creates its own CA and per-name leaf certificates under `~/.local/share/qns-bridge/`. The directory is mode `0700`, private keys are mode `0600`, and the CA has a critical `DNS:.q` name constraint. The trust entry is added only to `~/.pki/nssdb`. Chromium/Brave uses a shared NSS database on Linux; current versions default to `~/.local/share/pki/nssdb` but use `~/.pki/nssdb` when it exists. Creating the compatibility database lets old and current Brave builds use the same trust entry. No system trust store or second NSS database is changed. [Chromium's Linux certificate documentation](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md) describes this lookup behavior.
-
-**Brave on Linux does not use a per-profile NSS database for trusted roots.** The dedicated browser profile keeps cookies, extensions, and browsing data separate, but the `.q`-constrained CA trust is shared by Brave profiles under this operating-system account. Other applications that explicitly use this NSS database may also see the CA, still limited by the `.q` name constraint. This is the remaining limitation of local HTTPS for `.q` in Brave; the installer avoids broad system trust.
-
-The CA private key is local and must not be shared. The bridge only routes one-label `.q` names through its local SOCKS5 listener; other sites remain direct. Browser cookies and storage remain per `.q` origin.
-
-## Association fallback
-
-`obscura.q → QStorage bucket 0xenos` is bundled in `registry/manifest.json`. The bridge tries the configured QStorage manifest first, then this bundled manifest, then the public GitHub fallback. If QStorage is temporarily unavailable, the bundled association still resolves. There is no per-visit name lookup. Users do not need GitHub or QStorage credentials. The manifest host can see its own download traffic and client IP addresses.
-
-## Uninstall
-
-Run:
-
-```sh
-./uninstall.sh
-```
-
-This stops and disables the per-user bridge service, removes its service file, and removes the bridge CA trust entry from the user NSS database. It keeps the CA key, certificates, local mappings, and dedicated Brave profile unless explicitly requested. To permanently delete local CA and mapping data, use `./uninstall.sh --purge-data` and confirm the prompt. To also delete the dedicated Brave profile and its cookies/browser data, add `--purge-profile` and confirm its separate prompt.
-
-After uninstalling, the downloaded or cloned application directory can be deleted.
-
-## Verification
-
-Build a deterministic Linux source bundle with:
+## Verify this branch
 
 ```sh
-scripts/package-linux.sh
+node tests/test_extension_routes.js
+python3 tests/extension_only_acceptance.py
 ```
 
-This creates `dist/qns-web-bridge-linux-0.6.3.tar.gz`; it does not publish a release.
+The acceptance test needs Brave and Python `aiohttp`. It launches a separate,
+temporary Brave profile and opens the live QStorage site; it does not touch the
+normal Brave profile. The legacy bridge tests can also be run with
+`python3 -m unittest tests.test_bridge tests.test_certs` in an environment with
+the dependencies from `requirements.txt`.
 
-Run the automated tests with the install's virtual environment or any environment containing the requirements:
+## Legacy bridge files
 
-```sh
-./.venv/bin/python -m unittest discover -s tests -v
-tests/install_smoke.sh
-./.venv/bin/python tests/acceptance.py
-```
-
-`install_smoke.sh` uses a temporary HOME and fake systemd/Brave commands. It never modifies the machine's active service or browser. `acceptance.py` creates a fresh install, simulates a QStorage manifest HTTP 503, restarts an isolated bridge process, verifies the bundled fallback and TLS certificate, and opens the site in a real headless Brave process with the unpacked extension loaded. It uses a temporary HOME, browser profile, and alternate test ports so it cannot collide with the user's regular Brave or existing bridge. The current Obscura page has inline CSS/JavaScript and no same-origin links; the acceptance test checks those actual page features and same-origin fragment navigation.
-
-## Current limitations
-
-- Only bundled associations are available. Arbitrary `.q` name resolution and ownership verification are not implemented.
-- The bridge currently does not proxy WebSockets.
-- The publisher UI is not required to open the bundled site and does not publish globally shared associations.
+`local/`, `install.sh`, and the older registry publisher are retained for
+reference and compatibility while this prototype is evaluated. The extension
+in this branch no longer configures the local proxy or calls those files.

@@ -11,11 +11,11 @@ function normalizeName(value) {
 
 function setStatus(message) { $('status').textContent = message; }
 
-chrome.runtime.sendMessage({type: 'directory'}, response => {
-  if (chrome.runtime.lastError || !response?.ok) return;
-  const options = (response.data?.sites || [])
-    .filter(site => NAME.test(String(site.name || '').toLowerCase()))
-    .map(site => String(site.name).toLowerCase());
+chrome.runtime.sendMessage({type: 'sites'}, response => {
+  if (chrome.runtime.lastError || !response?.sites) return;
+  const options = response.sites
+    .filter(site => NAME.test(String(site || '').toLowerCase()))
+    .map(site => String(site).toLowerCase());
   $('shared-sites').replaceChildren(...[...new Set(options)].sort().map(name => {
     const option = document.createElement('option');
     option.value = name;
@@ -27,6 +27,10 @@ $('open-form').addEventListener('submit', async event => {
   event.preventDefault();
   try {
     const name = normalizeName($('open-name').value);
+    const sites = await new Promise(resolve => {
+      chrome.runtime.sendMessage({type: 'sites'}, response => resolve(response?.sites || []));
+    });
+    if (!sites.includes(name)) throw new Error('This site is not included in this extension version yet.');
     await chrome.tabs.create({url: 'https://' + name + '/'});
     window.close();
   } catch (error) { setStatus(error.message); }

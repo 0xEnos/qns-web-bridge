@@ -9,3 +9,4 @@ local-data/
 registry/.well-known/
 registry/stonks.json
 dist/*.tar.gz
+extension/_metadata/
